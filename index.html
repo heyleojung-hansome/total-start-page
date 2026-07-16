@@ -17,24 +17,22 @@
 <script>
 const LINKS = [
   // ── 영업관련 ──────────────────────────────────
-  { name: "PM 견적 검색",     url: "#", icon: "search",    cat: "sales" },
-  { name: "세일즈 랭크보드",   url: "#", icon: "trophy",    cat: "sales" },
-  { name: "영업활동일지",     url: "#", icon: "clipboard", cat: "sales" },
-  { name: "이전 접수",        url: "#", icon: "transfer",  cat: "sales" },
-      { name: "이전 3접수",        url: "#", icon: "transfer",  cat: "sales" },
-      { name: "이전 접3수",        url: "#", icon: "transfer",  cat: "sales" },
-        { name: "이전 접3수",        url: "#", icon: "transfer",  cat: "sales" },
+  //  alias: 검색할 때 함께 잡히는 별칭들 (자유롭게 추가)
+  { name: "PM 견적 검색",     url: "#", icon: "search",    cat: "sales",  alias: ["견적", "quote", "pm"] },
+  { name: "세일즈 랭크보드",   url: "#", icon: "trophy",    cat: "sales",  alias: ["랭킹", "순위", "실적", "rank"] },
+  { name: "영업활동일지",     url: "#", icon: "clipboard", cat: "sales",  alias: ["일지", "활동", "daily"] },
+  { name: "이전 접수",        url: "#", icon: "transfer",  cat: "sales",  alias: ["이전등록", "명의이전"] },
 
   // ── 어드민 관련 ────────────────────────────────
-  { name: "UC 통합원장",      url: "#", icon: "ledger",    cat: "admin" },
-  { name: "DEMO 입고관리",    url: "#", icon: "inbound",   cat: "admin" },
-  { name: "PM DB · 지점장",   url: "#", icon: "database",  cat: "admin" },
+  { name: "UC 통합원장",      url: "#", icon: "ledger",    cat: "admin",  alias: ["원장", "장부", "ledger"] },
+  { name: "DEMO 입고관리",    url: "#", icon: "inbound",   cat: "admin",  alias: ["데모", "입고", "demo"] },
+  { name: "PM DB · 지점장",   url: "#", icon: "database",  cat: "admin",  alias: ["디비", "db", "지점장"] },
 
   // ── 공통 ──────────────────────────────────────
-  { name: "하이웍스",         url: "#", icon: "grid",      cat: "common" },
-  { name: "Wins",            url: "#", icon: "spark",     cat: "common" },
-  { name: "대차 현황 & 예약",  url: "#", icon: "calendar",  cat: "common" },
-  { name: "트래픽 보드",      url: "#", icon: "traffic",   cat: "common" },
+  { name: "하이웍스",         url: "#", icon: "grid",      cat: "common", alias: ["메일", "그룹웨어", "hiworks"] },
+  { name: "Wins",            url: "#", icon: "spark",     cat: "common", alias: ["윈스", "벤츠시스템"] },
+  { name: "대차 현황 & 예약",  url: "#", icon: "calendar",  cat: "common", alias: ["대차", "예약", "렌트"] },
+  { name: "트래픽 보드",      url: "#", icon: "traffic",   cat: "common", alias: ["트래픽", "방문", "traffic"] },
 ];
 
 const CATEGORIES = [
@@ -241,6 +239,75 @@ const QUOTES = [
   .quote .q-text { font-size: 15px; color: var(--muted); font-weight: 400; letter-spacing: -.01em; line-height: 1.5; }
   .quote .q-author { font-size: 12.5px; color: var(--muted-2); flex: none; }
 
+  /* ── favorites row ── */
+  .fav-row { margin-bottom: 38px; }
+  .fav-row.hidden { display: none; }
+  .fav-head {
+    display: flex; align-items: center; gap: 9px; margin-bottom: 14px;
+  }
+  .fav-head svg { color: var(--eq); opacity: .85; }
+  .fav-head h2 {
+    font-size: 13.5px; font-weight: 600; color: var(--silver); letter-spacing: .01em;
+  }
+  .fav-head .tip { font-size: 11.5px; color: var(--muted-2); margin-left: 4px; }
+  .fav-cards {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px;
+  }
+
+  /* ── star button on cards ── */
+  .card .star {
+    flex: none; position: relative; z-index: 2;
+    width: 30px; height: 30px; border-radius: 8px;
+    display: grid; place-items: center;
+    background: transparent; border: none; cursor: pointer;
+    color: var(--muted-2); opacity: 0;
+    transition: opacity .2s, color .2s, transform .2s;
+  }
+  .card:hover .star, .card .star:focus-visible { opacity: 1; }
+  .card .star:hover { color: var(--eq); transform: scale(1.12); }
+  .card .star:focus-visible { outline: none; color: var(--eq); }
+  .card .star.on { opacity: 1; color: var(--eq); }
+  .card .star.on svg { fill: currentColor; }
+  @media (hover: none) { .card .star { opacity: .6; } }  /* 모바일: 항상 보이게 */
+
+  /* ── sticky compact favorites bar (appears on scroll) ── */
+  .fav-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 20px;
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+    transform: translateY(-100%); opacity: 0;
+    transition: transform .32s cubic-bezier(.2,.7,.2,1), opacity .32s;
+    pointer-events: none;
+  }
+  .fav-bar.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+  .fav-bar .bar-star { color: var(--eq); flex: none; display: grid; place-items: center; margin-right: 4px; }
+  .fav-bar .bar-inner {
+    display: flex; align-items: center; gap: 6px;
+    overflow-x: auto; scrollbar-width: none; max-width: 100%;
+  }
+  .fav-bar .bar-inner::-webkit-scrollbar { display: none; }
+  .fav-bar a {
+    display: inline-flex; align-items: center; gap: 8px; flex: none;
+    padding: 7px 13px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line);
+    color: var(--silver); text-decoration: none;
+    font-size: 12.5px; font-weight: 500; letter-spacing: -.01em;
+    transition: border-color .2s, color .2s, background .2s, transform .2s;
+  }
+  .fav-bar a svg { width: 15px; height: 15px; }
+  .fav-bar a:hover {
+    color: var(--platinum); border-color: rgba(169,198,230,0.35);
+    background: var(--eq-soft); transform: translateY(-1px);
+  }
+  body.light .fav-bar { background: color-mix(in srgb, #F2F4F7 82%, transparent); }
+  @media (max-width: 640px) {
+    .fav-bar a .bar-name { display: none; }   /* 좁은 화면: 아이콘만 */
+    .fav-bar a { padding: 8px 10px; }
+  }
+
   /* ── search ── */
   .search-row { margin-bottom: 44px; }
   .search {
@@ -386,6 +453,14 @@ const QUOTES = [
   <div class="bg-fx"></div>
   <div class="bg-grid"></div>
 
+  <!-- sticky compact favorites bar -->
+  <nav class="fav-bar" id="favBar" aria-label="자주 쓰는 툴 바로가기">
+    <span class="bar-star">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.6 9.4l6.5-.9L12 2.6z"/></svg>
+    </span>
+    <div class="bar-inner" id="favBarInner"></div>
+  </nav>
+
   <!-- ambient star watermark (custom geometric mark) -->
   <svg class="star-mark-bg" viewBox="0 0 200 200" fill="none" aria-hidden="true">
     <circle class="ring" cx="100" cy="100" r="92" stroke-width="1" opacity=".6"/>
@@ -444,9 +519,18 @@ const QUOTES = [
     <div class="search-row">
       <div class="search">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="q" type="text" placeholder="툴 검색 — 이름을 입력하세요" autocomplete="off" spellcheck="false" />
+        <input id="q" type="text" placeholder="툴 검색 — 이름·별칭 무엇이든" autocomplete="off" spellcheck="false" />
         <span class="kbd">/</span>
       </div>
+    </div>
+
+    <div class="fav-row hidden" id="favRow">
+      <div class="fav-head">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.6 9.4l6.5-.9L12 2.6z"/></svg>
+        <h2>자주 쓰는 툴</h2>
+        <span class="tip">카드의 ★ 를 눌러 추가/해제</span>
+      </div>
+      <div class="fav-cards" id="favCards"></div>
     </div>
 
     <div class="cols" id="cols"></div>
@@ -488,58 +572,127 @@ const QUOTES = [
   const arrow =
     '<svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
 
-  // ── render columns ──
+  // ── favorites state (per-browser) ──
+  let favs = [];
+  try { favs = JSON.parse(localStorage.getItem("uc-one-favs") || "[]"); } catch (e) {}
+  const saveFavs = () => { try { localStorage.setItem("uc-one-favs", JSON.stringify(favs)); } catch (e) {} };
+
+  const starSvg =
+    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.6 9.4l6.5-.9L12 2.6z"/></svg>';
+
+  const cardHtml = (l, extraDelay) => {
+    const unset = !l.url || l.url === "#";
+    const isFav = favs.includes(l.name);
+    const searchKey = [l.name, ...(l.alias || [])].join(" ").toLowerCase();
+    return `<a class="card${unset ? " unset" : ""}" href="${l.url || "#"}"
+               ${unset ? 'onclick="return false"' : 'target="_blank" rel="noopener"'}
+               data-name="${l.name}" data-search="${searchKey}"
+               style="animation-delay:${extraDelay.toFixed(2)}s">
+              <span class="ico">${svgIcon(l.icon)}</span>
+              <span class="body">
+                <span class="name">${l.name}</span>
+                ${unset ? '<span class="hint">링크 설정 필요</span>' : ""}
+              </span>
+              <button class="star${isFav ? " on" : ""}" type="button"
+                      aria-label="${isFav ? "즐겨찾기 해제" : "즐겨찾기 추가"}"
+                      data-fav="${l.name}">${starSvg}</button>
+              ${arrow}
+            </a>`;
+  };
+
+  // ── render everything (favorites + columns) ──
   const colsEl = document.getElementById("cols");
-  let delay = 0;
-  CATEGORIES.forEach((cat) => {
-    const items = LINKS.filter((l) => l.cat === cat.key);
-    const col = document.createElement("section");
-    col.className = "col";
-    col.dataset.cat = cat.key;
+  const favRow = document.getElementById("favRow");
+  const favCards = document.getElementById("favCards");
 
-    const cards = items.map((l) => {
-      const unset = !l.url || l.url === "#";
-      delay += 0.045;
-      return `<a class="card${unset ? " unset" : ""}" href="${l.url || "#"}"
-                 ${unset ? 'onclick="return false"' : 'target="_blank" rel="noopener"'}
-                 data-name="${l.name}" style="animation-delay:${delay.toFixed(2)}s">
-                <span class="ico">${svgIcon(l.icon)}</span>
-                <span class="body">
-                  <span class="name">${l.name}</span>
-                  ${unset ? '<span class="hint">링크 설정 필요</span>' : ""}
-                </span>
-                ${arrow}
-              </a>`;
-    }).join("");
+  function renderAll() {
+    // favorites row
+    const favLinks = favs.map((n) => LINKS.find((l) => l.name === n)).filter(Boolean);
+    favRow.classList.toggle("hidden", favLinks.length === 0);
+    let d = 0;
+    favCards.innerHTML = favLinks.map((l) => { d += 0.04; return cardHtml(l, d); }).join("");
 
-    col.innerHTML = `
-      <div class="col-head">
-        <span class="bar"></span>
-        <h2>${cat.label}</h2>
-        <span class="count">${items.length}</span>
-        <span class="en">${cat.en}</span>
-      </div>
-      <div class="cards">${cards}</div>`;
-    colsEl.appendChild(col);
+    // category columns
+    colsEl.innerHTML = "";
+    let delay = 0;
+    CATEGORIES.forEach((cat) => {
+      const items = LINKS.filter((l) => l.cat === cat.key);
+      const col = document.createElement("section");
+      col.className = "col";
+      col.dataset.cat = cat.key;
+      const cards = items.map((l) => { delay += 0.045; return cardHtml(l, delay); }).join("");
+      col.innerHTML = `
+        <div class="col-head">
+          <span class="bar"></span>
+          <h2>${cat.label}</h2>
+          <span class="count">${items.length}</span>
+          <span class="en">${cat.en}</span>
+        </div>
+        <div class="cards">${cards}</div>`;
+      colsEl.appendChild(col);
+    });
+
+    applyFilter(); // 검색어가 있으면 유지
+    renderFavBar();
+    updateFavBar();
+  }
+
+  // star clicks (delegated, works for both sections)
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".star");
+    if (!btn) return;
+    e.preventDefault(); e.stopPropagation();
+    const name = btn.dataset.fav;
+    favs = favs.includes(name) ? favs.filter((n) => n !== name) : [...favs, name];
+    saveFavs();
+    renderAll();
   });
 
-  // ── live search filter ──
+  // ── sticky compact favorites bar ──
+  const favBar = document.getElementById("favBar");
+  const favBarInner = document.getElementById("favBarInner");
+
+  function renderFavBar() {
+    const favLinks = favs.map((n) => LINKS.find((l) => l.name === n)).filter(Boolean);
+    favBarInner.innerHTML = favLinks.map((l) => {
+      const unset = !l.url || l.url === "#";
+      return `<a href="${l.url || "#"}" ${unset ? 'onclick="return false"' : 'target="_blank" rel="noopener"'} title="${l.name}">
+                ${svgIcon(l.icon)}<span class="bar-name">${l.name}</span>
+              </a>`;
+    }).join("");
+  }
+
+  function updateFavBar() {
+    if (favs.length === 0) { favBar.classList.remove("show"); return; }
+    // 즐겨찾기 줄(또는 그 자리)이 화면 위로 지나가면 바 표시
+    const anchor = favRow.classList.contains("hidden") ? document.querySelector(".search-row") : favRow;
+    const passed = anchor && anchor.getBoundingClientRect().bottom < 0;
+    favBar.classList.toggle("show", !!passed);
+  }
+  window.addEventListener("scroll", updateFavBar, { passive: true });
+
+  // ── live search filter (name + alias) ──
   const q = document.getElementById("q");
   const emptyEl = document.getElementById("empty");
-  q.addEventListener("input", () => {
+  function applyFilter() {
     const term = q.value.trim().toLowerCase();
     let anyVisible = false;
-    document.querySelectorAll(".col").forEach((col) => {
+    // 검색 중엔 즐겨찾기 줄은 숨김 (결과가 중복돼 보이니까)
+    favRow.classList.toggle("hidden", term !== "" || favs.length === 0);
+    document.querySelectorAll("#cols .col").forEach((col) => {
       let colVisible = false;
       col.querySelectorAll(".card").forEach((card) => {
-        const match = card.dataset.name.toLowerCase().includes(term);
+        const match = card.dataset.search.includes(term);
         card.style.display = match ? "" : "none";
         if (match) { colVisible = true; anyVisible = true; }
       });
       col.style.display = colVisible ? "" : "none";
     });
     emptyEl.classList.toggle("hidden", anyVisible);
-  });
+  }
+  q.addEventListener("input", applyFilter);
+
+  renderAll();
 
   // "/" focuses search, Esc clears
   document.addEventListener("keydown", (e) => {
